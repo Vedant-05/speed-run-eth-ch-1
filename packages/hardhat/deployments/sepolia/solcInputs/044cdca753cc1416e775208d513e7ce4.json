@@ -1,0 +1,38 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/ExampleExternalContract.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.4;  //Do not change the solidity version as it negativly impacts submission grading\n\ncontract ExampleExternalContract {\n\n  bool public completed;\n\n  function complete() public payable {\n    completed = true;\n  }\n\n}\n"
+    },
+    "contracts/Staker.sol": {
+      "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.4;  //Do not change the solidity version as it negativly impacts submission grading\n\n\nimport \"./ExampleExternalContract.sol\";\n\n\ncontract Staker {\n\n  ExampleExternalContract public exampleExternalContract;\n\n  constructor(address exampleExternalContractAddress) {\n      exampleExternalContract = ExampleExternalContract(exampleExternalContractAddress);\n  }\n\n  mapping ( address => uint256 ) public balances;\n\n  uint256 public constant threshold = 1 ether;\n\n  uint256 public  deadline = block.timestamp + 72 hours;\n\n  bool openForWithdraw = false;\n\n  bool callOnlyOnce = false;\n\n\n  event Stake(address,uint256);\n\n  // Collect funds in a payable `stake()` function and track individual `balances` with a mapping:\n  // (Make sure to add a `Stake(address,uint256)` event and emit it for the frontend `All Stakings` tab to display)\n\n  function timeLeft() public view returns (uint256) {\n  \n    if(block.timestamp >= deadline) {\n        return 0;\n    }\n    if(block.timestamp < deadline) {\n        return (deadline - block.timestamp);  // Fixed: deadline minus current time\n    }\n}\n\n  function  stake() public payable {\n    address from = msg.sender;\n    balances[from] += msg.value;\n\n    emit Stake(msg.sender, msg.value);\n  }\n\n\n  function execute() public {\n     require(block.timestamp >= deadline, \"Still Time is Remaining\");\n     require(!callOnlyOnce, \"Already Been Called Once\");\n\n     callOnlyOnce = true;\n\n     if(address(this).balance >= threshold) {\n      exampleExternalContract.complete{value: address(this).balance}();\n      return;\n     }\n\n     openForWithdraw = true;\n\n  }\n\n  function withdraw() public {\n    require(openForWithdraw,\"Funds Transfered to external contract\");\n    require(balances[msg.sender] > 0,\"No Amount Remaining\");\n    uint toTransfer = balances[msg.sender];\n    balances[msg.sender] = 0;\n    payable(msg.sender).transfer(toTransfer);\n  }\n\n  receive() external payable {\n    stake();\n    // balances[msg.sender] += msg.value;\n  }\n\n     \n\n\n  // After some `deadline` allow anyone to call an `execute()` function\n  // If the deadline has passed and the threshold is met, it should call `exampleExternalContract.complete{value: address(this).balance}()`\n\n\n  // If the `threshold` was not met, allow everyone to call a `withdraw()` function to withdraw their balance\n\n\n  // Add a `timeLeft()` view function that returns the time left before the deadline for the frontend\n\n\n  // Add the `receive()` special function that receives eth and calls stake()\n\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
